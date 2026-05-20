@@ -961,6 +961,8 @@ This auto-tagging feature enhances retrieval by adding another layer of domain-s
       applyModelConfigs: 'Apply model configs',
       conversations: 'Conversations',
       chatApps: 'Chat apps',
+      myChats: 'My chats',
+      allChats: 'All chats',
       newConversation: 'New conversation',
       createAssistant: 'Create an assistant',
       assistantSetting: 'Assistant settings',

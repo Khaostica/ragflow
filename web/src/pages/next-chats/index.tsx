@@ -5,19 +5,31 @@ import ListFilterBar from '@/components/list-filter-bar';
 import { RenameDialog } from '@/components/rename-dialog';
 import { Button } from '@/components/ui/button';
 import { RAGFlowPagination } from '@/components/ui/ragflow-pagination';
+import { Segmented } from '@/components/ui/segmented';
 import { useFetchChatList } from '@/hooks/use-chat-request';
+import { useFetchUserInfo } from '@/hooks/use-user-setting-request';
 import { pick } from 'lodash';
 import { Plus } from 'lucide-react';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import { ChatCard } from './chat-card';
+import {
+  OwnershipScope,
+  useOwnershipScope,
+} from './hooks/use-ownership-scope';
 import { useRenameChat } from './hooks/use-rename-chat';
 
 export default function ChatList() {
-  const { data, setPagination, pagination, handleInputChange, searchString } =
-    useFetchChatList();
   const { t } = useTranslation();
+  const { data: userInfo } = useFetchUserInfo();
+  const { scope, setScope } = useOwnershipScope();
+  const ownerIds = useMemo(
+    () => (scope === 'mine' && userInfo?.id ? [userInfo.id] : undefined),
+    [scope, userInfo?.id],
+  );
+  const { data, setPagination, pagination, handleInputChange, searchString } =
+    useFetchChatList({ ownerIds });
   const {
     initialChatName,
     chatRenameVisible,
@@ -32,6 +44,15 @@ export default function ChatList() {
       setPagination({ page, pageSize });
     },
     [setPagination],
+  );
+
+  const handleScopeChange = useCallback(
+    (next: OwnershipScope) => {
+      if (next === scope) return;
+      setScope(next);
+      setPagination({ page: 1 });
+    },
+    [scope, setScope, setPagination],
   );
 
   const handleShowCreateModal = useCallback(() => {
@@ -58,6 +79,18 @@ export default function ChatList() {
               icon="chats"
               onSearchChange={handleInputChange}
               searchString={searchString}
+              preChildren={
+                <Segmented
+                  value={scope}
+                  options={[
+                    { value: 'mine', label: t('chat.myChats') },
+                    { value: 'all', label: t('chat.allChats') },
+                  ]}
+                  onChange={(value) =>
+                    handleScopeChange(value as OwnershipScope)
+                  }
+                />
+              }
             >
               <Button data-testid="create-chat" onClick={handleShowCreateModal}>
                 <Plus className="size-[1em]" />

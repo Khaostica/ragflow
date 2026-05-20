@@ -61,10 +61,16 @@ export const useGetChatSearchParams = () => {
   };
 };
 
-export const useFetchChatList = () => {
+export const useFetchChatList = ({
+  ownerIds,
+}: { ownerIds?: string[] } = {}) => {
   const { searchString, handleInputChange } = useHandleSearchChange();
   const { pagination, setPagination } = useGetPaginationWithRouter();
   const debouncedSearchString = useDebounce(searchString, { wait: 500 });
+  const ownerIdsKey =
+    Array.isArray(ownerIds) && ownerIds.length > 0
+      ? [...ownerIds].sort().join(',')
+      : '';
 
   const {
     data,
@@ -75,6 +81,7 @@ export const useFetchChatList = () => {
       ChatApiAction.FetchChatList,
       {
         debouncedSearchString,
+        ownerIdsKey,
         ...pagination,
       },
     ],
@@ -82,13 +89,20 @@ export const useFetchChatList = () => {
     gcTime: 0,
     refetchOnWindowFocus: false,
     queryFn: async () => {
+      const params: Record<string, unknown> = {
+        keywords: debouncedSearchString,
+        page_size: pagination.pageSize,
+        page: pagination.current,
+      };
+      if (Array.isArray(ownerIds) && ownerIds.length > 0) {
+        // Backend reads owner_ids via Flask's request.args.getlist("owner_ids"),
+        // which expects repeated `owner_ids=` query params (no `[]` suffix).
+        // Pass a single value as a scalar; multiple as a repeated-key array.
+        params.owner_ids = ownerIds.length === 1 ? ownerIds[0] : ownerIds;
+      }
       const { data } = await chatService.listChats(
         {
-          params: {
-            keywords: debouncedSearchString,
-            page_size: pagination.pageSize,
-            page: pagination.current,
-          },
+          params,
           data: {},
         },
         true,
